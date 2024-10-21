@@ -67,7 +67,7 @@ def process_pgn(pgn_file, output_folder, book):
     game_number = 1
     try:
         for game in read_pgns(pgn_file):
-            if game_number % 5000 == 0:
+            if game_number % 100 == 0:
                 now = datetime.now()
                 elapsed_time = now - start
                 print(f"Processed {game_number} games. Time now: {now}. Elapsed time: {elapsed_time}")
@@ -80,7 +80,6 @@ def process_pgn(pgn_file, output_folder, book):
         return
     
     print(f"Processed {game_number} games. Time now: {datetime.now()}. Elapsed time: {datetime.now()-start}")
-    print(str(book))
     book_output_path = os.path.join(output_folder, "book.cob")
     book.save(book_output_path)
             

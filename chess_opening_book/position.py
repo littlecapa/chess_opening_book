@@ -1,9 +1,9 @@
 class ChessPosition:
-    def __init__(self, eval, winning, success):
+    def __init__(self, eval=0.0, winning=0, success=0):
         self.eval_min = eval
         self.eval_max = eval
         self.winning = winning
-        self.nr_games = 0
+        self.nr_games = 1
         self.sum_success = success
         self.moves={}
 
@@ -25,11 +25,13 @@ class ChessPosition:
             yield move, new_hash
 
     def __str__(self):
+        #out = " EVAL:"
         if self.eval_min == self.eval_max:
-            out = f"EVAL:{self.eval_min} "
+            out = f"[{self.eval_min}] "
         else:
-            out = f"EVAL:[{self.eval_min}-{self.eval_max}] "
-        out += f"ELO: {self.winning} "
-        out += f"Success: {self.sum_success/self.nr_games} "
-        out += f"#Games: {self.nr_games}"
+            out= f"[{self.eval_min}-{self.eval_max}] "
+        out += f" / ELO: {self.sum_success} "
+        #out += f" / Winning: {self.winning} "
+        out += f"({self.nr_games})"
+        #out += "}"
         return out

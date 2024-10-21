@@ -1,6 +1,7 @@
 import pickle
 from .zobrist_hash import ZobristHash
 from .position import ChessPosition
+from .pgn import PgnCreator
 
 class OpeningBook:
 
@@ -19,7 +20,6 @@ class OpeningBook:
         self.init_hash = self.zh.get_init_hash()
         self.positions[self.init_hash] = self.init_pos
 
-    
     def save(self, filename):
         # Open the file in binary write mode and serialize the data
         print(f'Book is based on {self.stats["nr_games"]} Games and {self.stats["nr_moves"]} Moves (unique Positions: {len(self.positions)}) Max-Eval: {self.stats["max_eval"]}')
@@ -35,7 +35,6 @@ class OpeningBook:
             self.stats = data['stats']
 
     def new_game(self, game):
-        print("New Game")
         self.move_str = ""
         self.stats["nr_games"] += 1
         self.curr_pos = self.INITIAL_POS
@@ -43,11 +42,15 @@ class OpeningBook:
         self.board = game.board()
         self.hash = self.init_hash
         self.half_move_counter = 0
-        self.rating_diff = int(game.headers["WhiteRatingDiff"])
+        try:
+            self.rating_diff = int(game.headers["WhiteRatingDiff"])
+        except Exception as e:
+            self.rating_diff = 0
+            print(f"Bad Rating diff")
         if game.headers["Result"] == "1-0":
             self.result = +1
         elif game.headers["Result"] == "0-1":
-            self.result = +1
+            self.result = -1
         else:
             self.result = 0
         self.akt_pos = self.init_pos
@@ -77,7 +80,7 @@ class OpeningBook:
     def pos2str(self, pos, visited={}):
         output = ""
         if pos in visited:
-            return visited, output
+            return visited, f"Position {pos} is reached by Transposition!"
         else:
             visited[pos] = True
         index = 0
@@ -93,6 +96,41 @@ class OpeningBook:
         if len(visited) != len(self.positions):
             print(f"Error! Visited: {len(visited)} Positions: {len(self.positions)}")
         return output
+    
+    def pos2pgn(self, pos, visited=None):
+        if visited is None:
+            visited = {}
+        if pos in visited:
+            self.pc.mark_as_transposition()
+            return visited
+        visited[pos] = True
+        first = True
+        for move, new_pos in self.positions[pos].get_moves():
+            self.pc.add_move(move, str(self.positions[new_pos]), is_main = first)
+            first = False
+            visited = self.pos2pgn(new_pos, visited)
+            self.pc.take_move_back()            
+        return visited
+    
+    def book2pgn(self, pgn_structure = None):
+        #
+        # pgn_structure is a python game object
+        #
+        self.pc = PgnCreator(pgn_structure)
+        if pgn_structure:
+            self.pc.set_header("White", pgn_structure.headers["White"])
+            self.pc.set_header("Black", pgn_structure.headers["Black"])
+            current_hash = self.zh.hash_board(self.pc.current_node.board())
+            if current_hash not in self.positions:
+                raise Exception("Template Position not found in Book")
+        else:
+            self.pc.set_header("White", "My")
+            self.pc.set_header("Black", "Book")
+            current_hash = self.init_hash
+        _ = self.pos2pgn(current_hash)
+        
+        return str(self.pc)
+
 
 
 #
@@ -104,7 +142,3 @@ class OpeningBook:
             self.transpositions[position].append(move_string)
         except KeyError:
             self.transpositions[position] = [move_string]
-
-    def store_position(self, position, move_string, white_to_move, result, white_elo, black_elo, white_rating_diff, black_rating_diff):
-        pos = None
-        pass
